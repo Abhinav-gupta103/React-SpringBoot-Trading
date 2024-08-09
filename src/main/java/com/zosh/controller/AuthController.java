@@ -14,18 +14,26 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.zosh.config.JwtProvider;
+import com.zosh.model.TwoFactorOTP;
 import com.zosh.model.User;
 import com.zosh.repository.UserRepository;
 import com.zosh.response.AuthResponse;
 import com.zosh.service.CustomUserDetailsService;
+import com.zosh.service.TwoFactorOtpService;
+import com.zosh.utils.OtpUtils;
 
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
+
     @Autowired
     private UserRepository userRepository;
+
     @Autowired
     private CustomUserDetailsService customUserDetailsService;
+
+    @Autowired
+    private TwoFactorOtpService twoFactorOtpService;
 
     @PostMapping("/signup")
     public ResponseEntity<AuthResponse> register(@RequestBody User user) throws Exception {
@@ -68,6 +76,23 @@ public class AuthController {
         SecurityContextHolder.getContext().setAuthentication(auth);
 
         String jwt = JwtProvider.generateToken(auth);
+
+        User authuser = userRepository.findByEmail(userName);
+
+        if (user.getTwoFactorAuth().isEnabled()) {
+            AuthResponse res = new AuthResponse();
+            res.setMessage("Two Factor auth is enabled");
+            res.setTwoFactorAuthEnabled(true);
+            String otp = OtpUtils.generateOTP();
+
+            TwoFactorOTP oldTwoFactorOTP = twoFactorOtpService.findByUser(authuser.getId());
+            if (oldTwoFactorOTP != null) {
+                twoFactorOtpService.deleteTwoFactorOtp(oldTwoFactorOTP);
+            }
+            TwoFactorOTP newTwoFactorOTP = twoFactorOtpService.createTwoFactorOTP(authuser, otp, jwt);
+            res.setSession(newTwoFactorOTP.getId());
+            return new ResponseEntity<>(res, HttpStatus.ACCEPTED);
+        }
 
         AuthResponse res = new AuthResponse();
         res.setJwt(jwt);
