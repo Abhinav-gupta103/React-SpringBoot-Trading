@@ -110,7 +110,7 @@ public class UserController {
     }
 
     @PostMapping("auth/users/reset-password/verify-otp")
-    public ResponseEntity<ApiResponse> resetPasswordOtp(
+    public ResponseEntity<ApiResponse> resetPassword(
             @RequestParam String id,
             @RequestBody ResetPasswordRequest req,
             @RequestHeader("Authorization") String jwt)
